@@ -1,5 +1,6 @@
-mod puzzle_1;
+mod day1;
+mod day2;
 
 fn main() {
-    puzzle_1::solution()
+    day1::solution()
 }

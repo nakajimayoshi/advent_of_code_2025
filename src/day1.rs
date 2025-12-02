@@ -67,26 +67,29 @@ impl Dial {
     }
 
     fn rotate(&mut self, rotation: &Rotation) {
+        let start = self.number;
         let modulus = self.size + 1;
         let rotation_steps = rotation.steps.rem_euclid(modulus);
         let quotient = rotation.steps.div_euclid(modulus);
         self.zeroed_clicks_count += quotient;
         if rotation.is_right {
-            if self.number + rotation_steps.rem_euclid(modulus) > self.size {
+            let result_value = self.number + rotation_steps;
+            let result_lands_on_zero = result_value.rem_euclid(100) == 0 || result_value == 0;
+            if result_value > self.size || result_lands_on_zero {
                 self.zeroed_clicks_count += 1;
             }
-
-            self.number = (self.number + rotation_steps).rem_euclid(modulus);
+            self.number = result_value.rem_euclid(modulus);
         } else {
             let subtracted: i32 = (self.number as i32 - rotation_steps as i32) as i32;
-            if subtracted < 0 {
+            let result_lands_on_zero = subtracted.rem_euclid(100) == 0 || subtracted == 0;
+            if (subtracted < 0 || result_lands_on_zero) && start != 0 {
                 self.zeroed_clicks_count += 1;
             }
             self.number = subtracted.rem_euclid(modulus as i32) as u32;
         }
 
         if self.number == 0 {
-            self.zeroed_count += 1
+            self.zeroed_count += 1;
         }
     }
 }
@@ -94,17 +97,18 @@ impl Dial {
 mod test {
     use std::{collections::HashMap, str::FromStr, u32, vec};
 
-    use crate::puzzle_1::{Dial, Rotation};
+    use crate::day1::{Dial, Rotation};
 
     #[test]
     fn dial_should_wrap() {
         let mut dial = Dial::new(99, u32::MIN);
+
         let results = vec![
-            ("left 3", 97, Rotation::from_str("L3").unwrap()),
+            ("left three", 97, Rotation::from_str("L3").unwrap()),
             ("right two", 99, Rotation::from_str("R2").unwrap()),
             ("right two wrap", 1, Rotation::from_str("R2").unwrap()),
-            ("right 54", 55, Rotation::from_str("R54").unwrap()),
-            ("left 55", 0, Rotation::from_str("L55").unwrap()),
+            ("right fifty-four", 55, Rotation::from_str("R54").unwrap()),
+            ("left fifty-five", 0, Rotation::from_str("L55").unwrap()),
             (
                 "right 198 wrap twice",
                 98,
@@ -114,8 +118,37 @@ mod test {
 
         for (test_name, result, rotation) in results {
             dial.rotate(&rotation);
-            println!("{}", test_name);
-            assert_eq!(result, dial.number)
+            print!("{}", test_name);
+            assert_eq!(result, dial.number);
+            print!("pass ✅\n");
+        }
+    }
+
+    #[test]
+    fn dial_should_count_0_clicks() {
+        const DIAL_SIZE: u32 = 99;
+        const INITIAL_NUMBER: u32 = 50;
+        let mut dial = Dial::new(DIAL_SIZE, INITIAL_NUMBER);
+        let results = vec![
+            ("L68", 82, 1),
+            ("L30", 52, 1),
+            ("R48", 0, 2),
+            ("L5", 95, 2),
+            ("R60", 55, 3),
+            ("L55", 0, 4),
+            ("L1", 99, 4),
+            ("L99", 0, 5),
+        ];
+
+        assert_eq!(dial.zeroed_clicks_count, 0);
+
+        for (test_case, expected_result_number, expected_click_count_total) in results {
+            let rotation = Rotation::from_str(test_case).unwrap();
+            dial.rotate(&rotation);
+            print!("test case {}: ", test_case);
+            assert_eq!(dial.number, expected_result_number);
+            assert_eq!(dial.zeroed_clicks_count, expected_click_count_total);
+            print!("pass ✅\n");
         }
     }
 }
